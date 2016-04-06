@@ -7,28 +7,28 @@ Obviously there are things I will want to source pre-made, especially in the mec
 
 So far, I have the following designs completed:
   Software:  
-    - Main program game loop
-    - Sound and music
-    - Input detection
-    - Output activation and timed/sequenced event support
-    - Addressable LED control
-    - Magnetic tilt sensor (Thought this was an accelerometer, so the solenoids basically ruin this)
-    - Control of paddles/hardware from terminal or button
+  - Main program game loop
+  - Sound and music
+  - Input detection
+  - Output activation and timed/sequenced event support
+  - Addressable LED control
+  - Magnetic tilt sensor (Thought this was an accelerometer, so the solenoids basically ruin this)
+  - Control of paddles/hardware from terminal or button
   Hardware:
-    - i2c input/output board
-      o 5VDC inputs, built-in pullup resistors, inputs activate on connection to ground
-      o Up to 48VDC outputs, maximum about 8A each output 8 outputs (up to 3 active at once)
-      o Address can be changed with dip switch
-      o Fused for 8A slowblow
-      o Absolutely, positively requires flyback diodes.
-    - WS2812 Knockoff LED Chain
-      o Controlled by PWM output from RPi. Consider using separate control board for longer LED runs.
-    - 48VDC @ 8.3A Power Supply
-    - 5VDC @ 10A Power Supply
-    - Various pinball solenoids and assemblies
-    - Servo controller and servos
-    - Laser diodes
-    - Loser camera
+  - i2c input/output board
+    - 5VDC inputs, built-in pullup resistors, inputs activate on connection to ground
+    - Up to 48VDC outputs, maximum about 8A each output 8 outputs (up to 3 active at once)
+    - Address can be changed with dip switch
+    - Fused for 8A slowblow
+    - Absolutely, positively requires flyback diodes.
+  - WS2812 Knockoff LED Chain
+    - Controlled by PWM output from RPi. Consider using separate control board for longer LED runs.
+  - 48VDC @ 8.3A Power Supply
+  - 5VDC @ 10A Power Supply
+  - Various pinball solenoids and assemblies
+  - Servo controller and servos
+  - Laser diodes
+  - Loser camera
     
 Future plans:
   - Need a theme. This should have been thought of already.
