@@ -40,7 +40,7 @@ class mcp23017:
     self.i2cbus.write_byte_data(self.start_addr + device, self.outreg, self.outputs[device])
     return True
   
-  def getpin(self, pin, reqdebounce):
+  def getpin(self, pin, reqDebounce=True):
     if(pin > self.count * 8): return
     (device, dpin) = self.get_dpin(pin)
     mask = 1 << dpin
@@ -51,7 +51,7 @@ class mcp23017:
       if(self.time - self.debtime[pin - 1] >= self.debounce_time):
         self.debtime[pin - 1] = self.time
         debounce = True
-      if((debounce and reqdebounce) or not reqdebounce):
+      if((debounce and reqDebounce) or not reqDebounce):
         return True
       else:
         return False

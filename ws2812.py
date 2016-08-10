@@ -19,6 +19,17 @@ class ws2812:
     self.strip.setPixelColor(i, color)
     self.strip.show()
 
+  def setstrip(self, data):
+    for i in range(0, self.count):
+      self.strip.setPixelColor(i, data[i])
+    self.strip.show()
+
+  def getleds(self):
+    ledList = []
+    for i in range(0, self.count):
+      ledList.append(self.strip.getPixelColor(i))
+    return ledList
+
   def cleanup(self):
     for i in range(0, self.count):
       self.ledcolor(i, 0, 0, 0)
