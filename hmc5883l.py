@@ -4,8 +4,11 @@ class hmc5883l:
   def __init__(self, i2cbus, addr, tilt_magnitude):
     self.addr = addr
     self.i2cbus = i2cbus
-    self.i2cbus.write_byte_data(addr, 0x00, 0xF8)  # CRA 75Hz.
-    self.i2cbus.write_byte_data(addr, 0x02, 0x00)  # Mode continuous reads.
+    try:
+        self.i2cbus.write_byte_data(addr, 0x00, 0xF8)  # CRA 75Hz.
+        self.i2cbus.write_byte_data(addr, 0x02, 0x00)  # Mode continuous reads.
+    except OSError:
+        pass
 
     self.valX = 0
     self.valY = 0
@@ -20,9 +23,12 @@ class hmc5883l:
     self.tilted = False
      
   def update(self):
-    X = (self.i2cbus.read_byte_data(self.addr, 0x03) << 8) | self.i2cbus.read_byte_data(self.addr, 0x04)
-    Y = (self.i2cbus.read_byte_data(self.addr, 0x05) << 8) | self.i2cbus.read_byte_data(self.addr, 0x06)
-    Z = (self.i2cbus.read_byte_data(self.addr, 0x07) << 8) | self.i2cbus.read_byte_data(self.addr, 0x08)
+    try:
+        X = (self.i2cbus.read_byte_data(self.addr, 0x03) << 8) | self.i2cbus.read_byte_data(self.addr, 0x04)
+        Y = (self.i2cbus.read_byte_data(self.addr, 0x05) << 8) | self.i2cbus.read_byte_data(self.addr, 0x06)
+        Z = (self.i2cbus.read_byte_data(self.addr, 0x07) << 8) | self.i2cbus.read_byte_data(self.addr, 0x08)
+    except OSError:
+        pass
 
     # Update the values to be of two compliment
     self.valX = self.twos_to_int(X, 16);

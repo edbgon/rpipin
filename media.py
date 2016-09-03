@@ -81,86 +81,6 @@ class tEvent:
     "Starts the event as if it was newly triggered"
     self.initTick = initTick
 
-  def ledHeartbeat(self, time, led):
-    "Simple led heartbeat animation that cycles through colors"
-    self.start(time)
-    etime = self.elapsedTime(time)
-    if self.step == 0:
-      self.ledCol[0] = 255
-      self.ledCol[1] = 0
-      self.ledCol[2] = 0
-      self.ledA = 255
-      self.step += 1
-    if self.step == 1:
-      self.ledCol[0] = 255 - int(etime / 10)
-      self.ledCol[1] = int(etime / 10)
-    if self.step == 2:
-      self.ledCol[1] = 255 - int(etime / 10)
-      self.ledCol[2] = int(etime / 10)
-    if self.step == 3:
-      self.ledCol[2] = 255 - int(etime / 10)
-      self.ledCol[0] = int(etime / 10)
-    if self.step == 4:
-      self.step = 0
-    if etime >= 2550:
-      self.step += 1
-      self.reset(time)
-    self.ledA = math.sin(time / 1000 % 360) + 1
-    for x in range(0, led.count):
-      led.ledcolor(x, int(self.ledA * self.ledCol[0]), int(self.ledA * self.ledCol[1]), int(self.ledA * self.ledCol[2]))
-
-  def ledChase(self, time, led):
-    "Marquee style led chase, only shows red, green, and blue colors"
-    self.start(time)
-    etime = self.elapsedTime(time)
-    if etime > 50:
-      last = self.step - 1
-      if last < 0: last = led.count
-      led.ledcolor(self.step, *self.ledCol)
-      led.ledcolor(last, 0, 0, 0)
-      self.step += 1
-      if self.step > led.count:
-        self.step = 0
-        self.ledCol = self.ledCol[1:] + self.ledCol[:1]
-      self.reset(time)
-
-  def ledFlash(self, time, led, duration, repetition, r, g, b, tag="1"):
-    "Flashes all LEDs to given color for 'duration' ms long and for 'repetition' times" 
-    if(self.started == "0"):
-        self.ledBackup = led.getleds()
-    self.start(time, tag=tag)
-    etime = self.elapsedTime(time)
-    if math.floor(etime / duration) % 2 == 0:
-      for x in range(0, led.count):
-        led.ledcolor(x, r, g, b)
-        self.step = 0
-    else:
-      if self.step == 0:
-        for x in range(0, led.count):
-          led.ledcolor(x, 0, 0, 0)
-        self.step = 1
-    if etime > (duration * repetition * 2) + duration:
-      led.setstrip(self.ledBackup)
-      self.stop()
-
-
-  def binCount(self, time, led):
-    "Binary counter LED animation. Counts up to whatever binary number your maximum amount of LEDs is."
-    self.start(time)
-    etime = self.elapsedTime(time)
-    if etime > 200:
-      ledList = list(bin(self.step)[2:].zfill(led.count))
-      for x in range(len(ledList)):
-        if ledList[x] == '1':
-          led.ledcolor(x, *self.ledCol)
-        else:
-          led.ledcolor(x, 0, 0, 0)
-      self.step += 1
-      if self.step > (2 ** led.count):
-        self.step = 0
-        for x in range(0, led.count): led.ledcolor(x, 0, 0, 0)
-        self.ledCol = self.ledCol[1:] + self.ledCol[:1]
-      self.reset(time)
 
   def triggerSolenoid(self, time, io, pin, duration=100, tag="1"):
     "Triggers a solenoid for 'duration' milliseconds"
@@ -171,6 +91,20 @@ class tEvent:
     elif etime < (duration + io.debounce_time):
       io.pinout(pin, False)
     else:
+      io.pinout(pin, False)
+      self.stop()
+
+  def triggerPWM(self, time, io, pin, duration=100, dutyCycle=100, dutyLength=10, tag="1"):
+    "Triggers an output for 'duration' milliseconds with a duty cycle of 'dutyCycle' percent. Frequency can be set up to 2 millisecond resolution, dutyLength is total length of PWM cycle."
+    self.start(time, tag)
+    etime = self.elapsedTime(time)
+    if etime < duration:
+      if((etime % dutyLength) < dutyLength*(dutyCycle / 100)):
+        io.pinout(pin, True)
+      else:
+        io.pinout(pin, False)
+    else:
+      io.pinout(pin, False)
       self.stop()
 
   def loadBall(self, time, pygame, score):

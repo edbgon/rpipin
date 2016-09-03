@@ -3,6 +3,7 @@
 # i2c Class for communication with mcp23017.
 # Using A side for outputs and B side for inputs
 # Set inputs to have built-in pullup resistors and activate on connection to GND
+
 class mcp23017:
   def __init__(self, i2cbus, start_addr, count, out_dir_reg, in_dir_reg, out_reg, in_reg, pup_reg, pol_reg, debounce_time):
     self.i2cbus  = i2cbus
@@ -14,7 +15,6 @@ class mcp23017:
     self.count = count
     self.debounce_time = debounce_time
     self.time = 0
-
     try:
       for i in range(start_addr, start_addr + count):
         self.i2cbus.write_byte_data(i, out_dir_reg, 0x00) 
@@ -23,7 +23,7 @@ class mcp23017:
         self.i2cbus.write_byte_data(i, pol_reg, 0xFF)
         self.i2cbus.write_byte_data(i, pup_reg, 0xFF)
     except OSError:
-      clean_exit("Error initializing i2c")
+      raise Exception("Cannot initialize i2c I/O at address " + str(i))
 
   def get_dpin(self, pin):
     pin -= 1
@@ -37,14 +37,23 @@ class mcp23017:
     else:
       self.outputs[device] = self.clearBit(self.outputs[device], pin)
     if(old == self.outputs[device]): return False
-    self.i2cbus.write_byte_data(self.start_addr + device, self.outreg, self.outputs[device])
+    try:
+      self.i2cbus.write_byte_data(self.start_addr + device, self.outreg, self.outputs[device])
+    except OSError:
+      # Intermittent I2C errors shouldn't stop the entire program. 
+      pass
     return True
   
   def getpin(self, pin, reqDebounce=True):
     if(pin > self.count * 8): return
     (device, dpin) = self.get_dpin(pin)
     mask = 1 << dpin
-    result = self.i2cbus.read_byte_data(self.start_addr + device, self.inreg) & mask
+    result = 0
+    try:
+      result = self.i2cbus.read_byte_data(self.start_addr + device, self.inreg) & mask
+    except OSError:
+      # Intermittent I2C errors shouldn't stop the entire program.
+      pass
     debounce = False
 
     if(result > 0):
@@ -60,7 +69,10 @@ class mcp23017:
 
   def cleanup(self):
     for i in range(self.start_addr, self.start_addr + self.count):
-      self.i2cbus.write_byte_data(i, self.outreg, 0b00000000)
+      try:
+        self.i2cbus.write_byte_data(i, self.outreg, 0b00000000)
+      except OSError:
+        pass
     return True
 
   # Binary math

@@ -96,11 +96,14 @@ class HT16K33():
         """Initialize driver with LEDs enabled and all turned off."""
         # Turn on the oscillator.
         #self._device.writeList(HT16K33_SYSTEM_SETUP | HT16K33_OSCILLATOR, [])
-        self.i2c.write_i2c_block_data(self.address, HT16K33_SYSTEM_SETUP | HT16K33_OSCILLATOR, [])
-        # Turn display on with no blinking.
-        self.set_blink(HT16K33_BLINK_OFF)
-        # Set display to full brightness.
-        self.set_brightness(15)
+        try:
+            self.i2c.write_i2c_block_data(self.address, HT16K33_SYSTEM_SETUP | HT16K33_OSCILLATOR, [])
+            # Turn display on with no blinking.
+            self.set_blink(HT16K33_BLINK_OFF)
+            # Set display to full brightness.
+            self.set_brightness(15)
+        except OSError:
+            raise Exception("Could not initialize HT16K33 display at address " + str(self.address))
 
     def set_blink(self, frequency):
         """Blink display at specified frequency.  Note that frequency must be a
@@ -111,7 +114,10 @@ class HT16K33():
                              HT16K33_BLINK_1HZ, HT16K33_BLINK_HALFHZ]:
             raise ValueError('Frequency must be one of HT16K33_BLINK_OFF, HT16K33_BLINK_2HZ, HT16K33_BLINK_1HZ, or HT16K33_BLINK_HALFHZ.')
         #self._device.writeList(HT16K33_BLINK_CMD | HT16K33_BLINK_DISPLAYON | frequency, [])
-        self.i2c.write_i2c_block_data(self.address, HT16K33_BLINK_CMD | HT16K33_BLINK_DISPLAYON | frequency, [])
+        try:
+            self.i2c.write_i2c_block_data(self.address, HT16K33_BLINK_CMD | HT16K33_BLINK_DISPLAYON | frequency, [])
+        except OSError:
+            raise Exception("Not able to set blink command for HT16K33 at address " + str(self.address))
 
     def set_brightness(self, brightness):
         """Set brightness of entire display to specified value (16 levels, from
@@ -120,7 +126,10 @@ class HT16K33():
         if brightness < 0 or brightness > 15:
             raise ValueError('Brightness must be a value of 0 to 15.')
         #self._device.writeList(HT16K33_CMD_BRIGHTNESS | brightness, [])
-        self.i2c.write_i2c_block_data(self.address, HT16K33_CMD_BRIGHTNESS | brightness, [])
+        try:
+            self.i2c.write_i2c_block_data(self.address, HT16K33_CMD_BRIGHTNESS | brightness, [])
+        except OSError:
+            raise Exception("Not able to set brightness level for HT16K33 at address " + str(self.address))
 
     def set_led(self, led, value):
         """Sets specified LED (value of 0 to 127) to the specified value, 0/False
@@ -142,7 +151,11 @@ class HT16K33():
         """Write display buffer to display hardware."""
         for i, value in enumerate(self.buffer):
             #self._device.write8(i, value)
-            self.i2c.write_byte_data(self.address, i, value)
+            try:
+                self.i2c.write_byte_data(self.address, i, value)
+            except OSError:
+                # Intermittent errors should be ignored.
+                pass
 
     def clear(self):
         """Clear contents of display buffer."""

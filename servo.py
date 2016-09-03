@@ -42,13 +42,15 @@ class servo :
     if (self.debug):
       print("Reseting PCA9685 MODE1 (without SLEEP) and MODE2")
     self.setAllPWM(0, 0)
-    self.write8(self.__MODE2, self.__OUTDRV)
-    self.write8(self.__MODE1, self.__ALLCALL)
-    time.sleep(0.005)                                       # wait for oscillator
-    
-    mode1 = self.readU8(self.__MODE1)
-    mode1 = mode1 & ~self.__SLEEP                 # wake up (reset sleep)
-    self.write8(self.__MODE1, mode1)
+    try:
+      self.write8(self.__MODE2, self.__OUTDRV)
+      self.write8(self.__MODE1, self.__ALLCALL)
+      time.sleep(0.005)                                       # wait for oscillator
+      mode1 = self.readU8(self.__MODE1)
+      if mode1 is not None: mode1 = mode1 & ~self.__SLEEP                 # wake up (reset sleep)
+      self.write8(self.__MODE1, mode1)
+    except:
+      raise Exception("Could not initialize servo at address " + str(address) + ".")
     time.sleep(0.005)                             # wait for oscillator
 
   def setPWMFreq(self, freq):
@@ -64,36 +66,43 @@ class servo :
     if (self.debug):
       print("Final pre-scale: %d" % prescale)
 
-    oldmode = self.readU8(self.__MODE1);
-    newmode = (oldmode & 0x7F) | 0x10             # sleep
-    self.write8(self.__MODE1, newmode)        # go to sleep
-    self.write8(self.__PRESCALE, int(math.floor(prescale)))
-    self.write8(self.__MODE1, oldmode)
-    time.sleep(0.005)
-    self.write8(self.__MODE1, oldmode | 0x80)
+    try:
+      oldmode = self.readU8(self.__MODE1);
+      newmode = (oldmode & 0x7F) | 0x10             # sleep
+      self.write8(self.__MODE1, newmode)        # go to sleep
+      self.write8(self.__PRESCALE, int(math.floor(prescale)))
+      self.write8(self.__MODE1, oldmode)
+      time.sleep(0.005)
+      self.write8(self.__MODE1, oldmode | 0x80)
+    except OSError:
+      pass
 
   def setPWM(self, channel, on, off):
     "Sets a single PWM channel"
-    self.write8(self.__LED0_ON_L+4*channel, on & 0xFF)
-    self.write8(self.__LED0_ON_H+4*channel, on >> 8)
-    self.write8(self.__LED0_OFF_L+4*channel, off & 0xFF)
-    self.write8(self.__LED0_OFF_H+4*channel, off >> 8)
+    try:
+      self.write8(self.__LED0_ON_L+4*channel, on & 0xFF)
+      self.write8(self.__LED0_ON_H+4*channel, on >> 8)
+      self.write8(self.__LED0_OFF_L+4*channel, off & 0xFF)
+      self.write8(self.__LED0_OFF_H+4*channel, off >> 8)
+    except OSError:
+      pass
 
   def setAllPWM(self, on, off):
     "Sets a all PWM channels"
-    self.write8(self.__ALL_LED_ON_L, on & 0xFF)
-    self.write8(self.__ALL_LED_ON_H, on >> 8)
-    self.write8(self.__ALL_LED_OFF_L, off & 0xFF)
-    self.write8(self.__ALL_LED_OFF_H, off >> 8)
+    try:
+      self.write8(self.__ALL_LED_ON_L, on & 0xFF)
+      self.write8(self.__ALL_LED_ON_H, on >> 8)
+      self.write8(self.__ALL_LED_OFF_L, off & 0xFF)
+      self.write8(self.__ALL_LED_OFF_H, off >> 8)
+    except OSError:
+      pass
   
   def write8(self, reg, value):
     "Writes an 8-bit value to the specified register/address"
-    try:
-      self.bus.write_byte_data(self.address, reg, value)
-      if self.debug:
-        print("I2C: Wrote 0x%02X to register 0x%02X" % (value, reg))
-    except:
-      return self.errMsg()
+    self.bus.write_byte_data(self.address, reg, value)
+    if self.debug:
+      print("I2C: Wrote 0x%02X to register 0x%02X" % (value, reg))
+
 
   def readU8(self, reg):
     "Read an unsigned byte from the I2C device"
@@ -104,7 +113,7 @@ class servo :
          (self.address, result & 0xFF, reg))
       return result
     except:
-      return self.errMsg()
+      pass
 
   def writeRaw8(self, value):
     "Writes an 8-bit value on the bus"
@@ -113,4 +122,5 @@ class servo :
       if self.debug:
         print("I2C: Wrote 0x%02X" % value)
     except:
-      return self.errMsg()
+      pass
+
