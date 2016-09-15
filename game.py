@@ -76,7 +76,7 @@ class Score:
 #################################################################################
 
 class dropTarget:
-  def __init__(self, minPin, maxPin, resetPin, restTime=1000, targetWorth=500, resetBonus=2000):
+  def __init__(self, minPin, maxPin, resetPin, restTime=1000, targetWorth=500, resetBonus=2000, ledTable=[0,1,2,3,4]):
     self.minPin = minPin
     self.maxPin = maxPin
     self.resetPin = resetPin
@@ -84,6 +84,7 @@ class dropTarget:
     self.rTime = 0
     self.ioRange = (maxPin - minPin) + 1
     self.targetTable = [False]*(self.maxPin + 1)
+    self.ledTable = ledTable
     self.restTime = restTime
     self.targetWorth = targetWorth
     self.resetBonus = resetBonus
@@ -99,6 +100,7 @@ class dropTarget:
     global solenoid
     global flash
     totalCheck = 0
+    count = 0
     if self.needReset is False:
       for x in range(self.minPin, self.maxPin + 1):
         if self.needReset is True: continue
@@ -107,8 +109,10 @@ class dropTarget:
           if self.targetTable[x] is False:
             score.modscore(self.targetWorth)
             play_sound(pygame, "Jump_03")
+            leds.setLed(self.ledTable[count], 255, 0, 0, 0, 0)
             leds.flash(25, 5, 255, 0, 0)
             self.targetTable[x] = True
+        count += 1
     
     if totalCheck >= self.ioRange:
       if self.needReset is False:
@@ -122,6 +126,8 @@ class dropTarget:
       self.needReset = False
       self.targetTable = [False]*(self.maxPin + 1)
       score.modscore(self.resetBonus)
+      for x in range(len(self.ledTable)):
+        leds.setLed(self.ledTable[x], 0, 0, 0, 0, 0)
       leds.flash(25, 10, 255, 255, 255)
       play_sound(pygame, "Jump_03")
 
@@ -357,26 +363,29 @@ while 1:
     #if event == curses.KEY_RIGHT:
       #servo1.setPWM(0, 0, servoMax)
 
-    if event == ord("j") or solenoid.started == "Motor":
-      solenoid.triggerPWM(time, io, 9, duration=1000, tag="Motor", dutyCycle=12, dutyLength=4)
+    #if event == ord("j") or solenoid.started == "Motor":
+    #  solenoid.triggerPWM(time, io, 9, duration=1000, tag="Motor", dutyCycle=12, dutyLength=4)
 
     if event == ord("z"):
-      leds.colorWipe(255, 0, 0)
+      leds.colorWipe(100, 255, 0, 0)
 
     if event == ord("x"):
-      leds.colorWipe(0, 255, 0)
+      leds.colorWipe(100, 0, 255, 0)
 
     if event == ord("c"):
-      leds.colorWipe(0, 0, 255)
+      leds.colorWipe(100, 0, 0, 255)
 
     if event == ord("v"):
-      leds.rainbow()
+      leds.rainbowCycle(20)
 
     if event == ord("b"):
-      leds.theaterChase(255, 255, 255)
+      leds.theaterChase(50, 255, 255, 255)
 
     if event == ord("n"):
-      leds.setLed(2, 127, 0, 127)
+      leds.setLed(2, 127, 0, 127, 100, 1)
+
+    if event == ord("o"):
+      leds.setLed(2, 127, 127, 0, 0, 0)
 
     if event == ord("m"):
       leds.restoreState()
@@ -385,7 +394,22 @@ while 1:
       leds.clear()
 
     if event == ord("f"):
-      leds.flash(50, 5, 255, 255, 255)
+      leds.flashInf(50, 255, 255, 255)
+
+    if event == ord("g"):
+      leds.flashAlt(50, 255, 255, 255)
+
+    if event == ord("h"):
+      leds.sparkle(100, 255, 255, 255)
+
+    if event == ord("j"):
+      leds.flame(15)
+
+    if event == ord("k"):
+      leds.sparkleFade(15, 15, 255, 255, 255)
+
+    if event == ord("l"):
+      leds.glow(20)
 
     dt1.check(time)
       
