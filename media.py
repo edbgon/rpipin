@@ -48,6 +48,66 @@ def play_sound(pygame, wpath):
   sound.play()
 
 #################################################################################
+# Drop Target class
+# Custom amount of drop targets and reset time
+#################################################################################
+
+class dropTarget:
+  def __init__(self, minPin, maxPin, resetPin, pygame, solenoid, score, io, leds, restTime=2000, targetWorth=500, resetBonus=2000, ledTable=[0,1,2,3,4]):
+    self.score = score
+    self.io = io
+    self.leds = leds
+    self.pygame = pygame
+    self.solenoid = solenoid
+
+    self.minPin = minPin
+    self.maxPin = maxPin
+    self.resetPin = resetPin
+    self.needReset = False
+    self.rTime = 0
+    self.ioRange = (maxPin - minPin) + 1
+    self.targetTable = [False]*(self.maxPin + 1)
+    self.ledTable = ledTable
+    self.restTime = restTime
+    self.targetWorth = targetWorth
+    self.resetBonus = resetBonus
+
+  def reset(self, time):
+    if self.solenoid.started != "2":
+      self.solenoid.triggerSolenoid(time, self.io, self.resetPin, duration=100, tag="2")
+
+  def check(self, time):
+    totalCheck = 0
+    count = 0
+
+    for x in range(self.minPin, self.maxPin + 1):
+      if self.io.getpin(x, reqDebounce=False):
+        if self.targetTable[x] is False:
+          self.score.modscore(self.targetWorth)
+          play_sound(self.pygame, "Jump_03")
+          self.leds.setLed(self.ledTable[count], 255, 0, 0, 0, 0)
+          self.leds.flash(25, 5, 255, 0, 0) # Need to make flash consider changes in LED state during flash.
+          self.targetTable[x] = True
+      count += 1
+    
+    if self.targetTable.count(True) is self.ioRange:
+      if self.needReset is False:
+        self.rTime = time
+      self.needReset = True 
+
+    if self.needReset and (time - self.rTime >= self.restTime):
+      self.reset(time)
+
+    if self.needReset and (time - self.rTime >= self.restTime + 100):
+      self.needReset = False
+      self.targetTable = [False]*(self.maxPin + 1)
+      self.score.modscore(self.resetBonus)
+      for x in range(len(self.ledTable)):
+        self.leds.setLed(self.ledTable[x], 0, 0, 0, 0, 0)
+      self.leds.flash(25, 10, 255, 255, 255)
+      play_sound(self.pygame, "Jump_03")
+
+#################################################################################
 # Timed Event Class
 #################################################################################
 class tEvent:
@@ -107,10 +167,10 @@ class tEvent:
       io.pinout(pin, False)
       self.stop()
 
-  def loadBall(self, time, pygame, score):
+  def loadBall(self, time, pygame, score, tag="1"):
     "Testing the timed event system. Will be used to load a ball in the future."
-    self.start(time)
-    self.elapsedTime(time)
+    self.start(time, tag)
+    #self.elapsedTime(time)
     if self.elapsedTime(time) > 1000 and self.step == 0:
       play_sound(pygame, "arugh")
       self.step += 1
@@ -123,4 +183,15 @@ class tEvent:
       play_sound(pygame, "loser")
       score.modscore(100)
       self.step = 0
+      self.stop()
+
+  def ufoFly(self, time, twoAxis, duration=5000, tag="1"):
+    "Makes the UFO servo fly around in a little pattern."
+    self.start(time, tag)
+    etime = self.elapsedTime(time) / 400
+    twoAxis.setX(math.fabs(100*math.sin(etime)))
+    twoAxis.setY(math.fabs(25*math.cos(etime*0.5)))
+    if self.elapsedTime(time) > duration:
+      twoAxis.setX(50)
+      twoAxis.setY(0)
       self.stop()

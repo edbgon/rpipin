@@ -24,7 +24,7 @@ CLEAR_ALL             = 0xFF
 
 EMPTY_BYTES = [0, 0, 0, 0, 0, 0]
 
-NUM_LEDS = 5
+NUM_LEDS = 29	
 
 class ledStrip():
   """Arduino slave WS2812 interaction"""

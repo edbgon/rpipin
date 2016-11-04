@@ -8,7 +8,7 @@ import math
 # Adafruit PCA9685 16-Channel PWM Servo Driver
 # ============================================================================
 
-class servo :
+class servo:
   # Registers/etc.
   __MODE1              = 0x00
   __MODE2              = 0x01
@@ -124,3 +124,36 @@ class servo :
     except:
       pass
 
+
+class twoAxisServo:
+  def __init__(self, servo, chX, chY, minXVal=110, minYVal=125, maxXVal=535, maxYVal=515, xInit=0, yInit=0):
+    self.minXVal = minXVal
+    self.maxXVal = maxXVal
+    self.minYVal = minYVal
+    self.maxYVal = maxYVal
+    self.chX = chX
+    self.chY = chY
+    self.xVal = xInit
+    self.yVal = yInit
+    self.servo = servo
+    
+    self.servo.setPWM(self.chX, 0, self.xVal)
+    self.servo.setPWM(self.chY, 0, self.yVal)
+
+  def modX(self, mod):
+    self.xVal += mod
+    self.xVal = max(min(100, self.xVal), 0)
+    self.servo.setPWM(self.chX, 0, int(self.minXVal + self.xVal/100 * (self.maxXVal - self.minXVal)))
+
+  def modY(self, mod):
+    self.yVal += mod
+    self.yVal = max(min(100, self.yVal), 0)
+    self.servo.setPWM(self.chY, 0, int(self.minYVal + self.yVal/100 * (self.maxYVal - self.minYVal)))
+
+  def setX(self, setn):
+    self.xVal = max(min(100, setn), 0)
+    self.servo.setPWM(self.chX, 0, int(self.minXVal + self.xVal/100 * (self.maxXVal - self.minXVal)))
+
+  def setY(self, setn):
+    self.yVal = max(min(100, setn), 0)
+    self.servo.setPWM(self.chY, 0, int(self.minYVal + self.yVal/100 * (self.maxYVal - self.minYVal)))

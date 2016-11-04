@@ -35,14 +35,14 @@ import pygame
 import curses
 import signal
 import sys
-import time
+import picamera
+import time as gtime
 
 #################################################################################
 # Definitions and Classes
 #################################################################################
 
 # Custom definitions and classes
-
 
 #################################################################################
 # Score class
@@ -69,68 +69,6 @@ class Score:
   def get_highscore(self):
     "Returns a list of the high scores"
     pass
-
-#################################################################################
-# Drop Target class
-# Custom amount of drop targets and reset time
-#################################################################################
-
-class dropTarget:
-  def __init__(self, minPin, maxPin, resetPin, restTime=1000, targetWorth=500, resetBonus=2000, ledTable=[0,1,2,3,4]):
-    self.minPin = minPin
-    self.maxPin = maxPin
-    self.resetPin = resetPin
-    self.needReset = False
-    self.rTime = 0
-    self.ioRange = (maxPin - minPin) + 1
-    self.targetTable = [False]*(self.maxPin + 1)
-    self.ledTable = ledTable
-    self.restTime = restTime
-    self.targetWorth = targetWorth
-    self.resetBonus = resetBonus
-
-  def reset(self, time):
-    global io
-    if solenoid.started != "2":
-      solenoid.triggerSolenoid(time, io, self.resetPin, duration=80, tag="2")
-
-  def check(self, time):
-    global score
-    global io
-    global solenoid
-    global flash
-    totalCheck = 0
-    count = 0
-    if self.needReset is False:
-      for x in range(self.minPin, self.maxPin + 1):
-        if self.needReset is True: continue
-        if io.getpin(x, reqDebounce=False):
-          totalCheck += 1
-          if self.targetTable[x] is False:
-            score.modscore(self.targetWorth)
-            play_sound(pygame, "Jump_03")
-            leds.setLed(self.ledTable[count], 255, 0, 0, 0, 0)
-            leds.flash(25, 5, 255, 0, 0)
-            self.targetTable[x] = True
-        count += 1
-    
-    if totalCheck >= self.ioRange:
-      if self.needReset is False:
-        self.rTime = time
-      self.needReset = True 
-
-    if self.needReset and (time - self.rTime >= self.restTime):
-      self.reset(time)
-
-    if self.needReset and (time - self.rTime >= self.restTime + 100):
-      self.needReset = False
-      self.targetTable = [False]*(self.maxPin + 1)
-      score.modscore(self.resetBonus)
-      for x in range(len(self.ledTable)):
-        leds.setLed(self.ledTable[x], 0, 0, 0, 0, 0)
-      leds.flash(25, 10, 255, 255, 255)
-      play_sound(pygame, "Jump_03")
-
 
 #################################################################################
 # Clean exit sigint handler
@@ -177,6 +115,16 @@ def stopAnimations(dontStop=""):
     exec(obj + ".stop()")
 
 #################################################################################
+# Media Volume Settings
+#################################################################################
+def modVolume(modval):
+  flag = "+"
+  if modval < 0:
+    flag = "-"
+    modval = abs(modval)
+  call(["amixer", "-q", "sset", "PCM", str(modval)+"%"+flag])
+
+#################################################################################
 # Initialization
 #################################################################################
 
@@ -186,7 +134,8 @@ from led import *
 #from hmc5883l import *
 from mcp23017 import *
 from media import *
-#from servo import *
+from servo import *
+from subprocess import call
 
 # In the beginning...
 time = 0
@@ -210,6 +159,11 @@ screen.nodelay(1)
 # Clean up nicely when sigint
 signal.signal(signal.SIGINT, signal_handler)
 #sys.excepthook = catch_uncaught
+
+#################################################################################
+# Init losercam
+camera = picamera.PiCamera()
+#################################################################################
 
 #################################################################################
 # Init Music
@@ -278,24 +232,22 @@ except:
 x = y = z = 0
 
 #################################################################################
-# Init Servo Library
+# Init Servo Library for 50Hz servos
 #################################################################################
-#servo1 = servo(smbus, address=0x40)
-#servoMin = 150  # Min pulse length out of 4096
-#servoMax = 600  # Max pulse length out of 4096
-#servo1.setPWMFreq(60)
-#servo1.setPWM(0, 0, servoMin)
+servoBoard = servo(smbus, address=0x40)
+servoBoard.setPWMFreq(50)
+ufoServo = twoAxisServo(servoBoard, 0, 1)
 
 
 #################################################################################
 # Animations and Scripts
 #################################################################################
-animList = ['loadBall', 'solenoid']
+animList = ['loadBall', 'solenoid', 'ufoFly']
 for obj in animList:
   exec(obj + "= tEvent()")
 
 # Set up drop target with 5 targets from pin 9 to pin 13. Reset pin is 2.
-dt1 = dropTarget(9, 13, 2)
+dt1 = dropTarget(9, 13, 2, pygame, solenoid, score, io, leds)
 
 #################################################################################
 # Main Game Loop
@@ -309,10 +261,12 @@ while 1:
 
     if event == ord("q"): break
 
-    if event == ord("1") or io.getpin(1) or solenoid.started == "1":
-      solenoid.triggerSolenoid(time, io, 1, duration=100, tag="1")
+    if io.getpin(1, reqDebounce=False):
+      io.pinout(1, True)
+    else:
+      io.pinout(1, False)
 
-    if event == ord("2") or io.getpin(2) or solenoid.started == "2":
+    if event == ord("2") or solenoid.started == "2":
       solenoid.triggerSolenoid(time, io, 2, duration=80, tag="2")
 
     if event == ord("3"):
@@ -336,11 +290,6 @@ while 1:
     if event == ord("9"):
       score.modscore(1000000)
 
-    # TESTING DELAYED ACTION
-    #if event == ord("r") or loadBall.started == "1":
-      #if loadBall.started == "0": stopAnimations("loadBall")
-      #loadBall.loadBall(time, pygame, score)
-
     # Change music around
     if event == ord("m"):
       playlistPos += 1
@@ -352,28 +301,41 @@ while 1:
     if event == ord("s"):
       play_sound(pygame, "arugh")
 
-    #  Testing Animations with LEDs
-    if event == ord("-"):
-      score.val = 0
+    if event == ord("r"):
       stopAnimations()
 
-    #if event == curses.KEY_LEFT:
-      #servo1.setPWM(0, 0, servoMin)
+    if event == ord("-"):
+      modVolume(-10)
+
+    if event == ord("+"):
+      modVolume(10)
+
+    if event == curses.KEY_LEFT:
+      ufoServo.modX(-1)
+
+    if event == curses.KEY_RIGHT:
+      ufoServo.modX(1)
+
+    if event == curses.KEY_DOWN:
+      ufoServo.modY(-1)
       
-    #if event == curses.KEY_RIGHT:
-      #servo1.setPWM(0, 0, servoMax)
+    if event == curses.KEY_UP:
+      ufoServo.modY(1)
+
+    if event == ord("/") or ufoFly.started == "1":
+      ufoFly.ufoFly(time, ufoServo, duration=5000)
 
     #if event == ord("j") or solenoid.started == "Motor":
     #  solenoid.triggerPWM(time, io, 9, duration=1000, tag="Motor", dutyCycle=12, dutyLength=4)
 
     if event == ord("z"):
-      leds.colorWipe(100, 255, 0, 0)
+      leds.colorWipe(10, 255, 0, 0)
 
     if event == ord("x"):
-      leds.colorWipe(100, 0, 255, 0)
+      leds.colorWipe(10, 0, 255, 0)
 
     if event == ord("c"):
-      leds.colorWipe(100, 0, 0, 255)
+      leds.colorWipe(10, 0, 0, 255)
 
     if event == ord("v"):
       leds.rainbowCycle(20)
@@ -387,7 +349,7 @@ while 1:
     if event == ord("o"):
       leds.setLed(2, 127, 127, 0, 0, 0)
 
-    if event == ord("m"):
+    if event == ord(";"):
       leds.restoreState()
 
     if event == ord(","):
@@ -409,7 +371,10 @@ while 1:
       leds.sparkleFade(15, 15, 255, 255, 255)
 
     if event == ord("l"):
-      leds.glow(20)
+      leds.glow(5)
+
+    if event == ord("."):
+      camera.capture('/var/www/html/snaps/' + str(gtime.time()) + '.jpg')
 
     dt1.check(time)
       
@@ -437,10 +402,12 @@ while 1:
   # Debug Information
   screen.addstr(12, 12, "Super Pinball 3000! Ticks thus far: " + str(time).ljust(20," "))
   screen.addstr(14, 12, "SCORE:       " + str(score.val).ljust(20," "))
-  screen.addstr(15, 12, "Paddle Time: " + str(score.pad).ljust(20," "))
-  #screen.addstr(16, 12, "OSErrors:    " + str(errors).ljust(20," "))
+  screen.addstr(15, 12, "X:           " + str(ufoServo.xVal).ljust(20," "))
+  screen.addstr(16, 12, "Y:           " + str(ufoServo.yVal).ljust(20," "))
+  #screen.addstr(17, 12, "Temp:        " + str(ufoServo.calc).ljust(20," "))
+  screen.addstr(17, 12, "OSErrors:    " + str(errors).ljust(20," "))
   #screen.addstr(17, 12, "Step:        " + str(countAnim.step).ljust(20," "))
-  #screen.addstr(18, 12, "Debug:       " + str(totdt).ljust(20," "))
+  #screen.addstr(18, 12, "Debug:       " + str(debugString).ljust(20," "))
   
   #if(time % 2 == 0): axis.update()
   
