@@ -18,6 +18,8 @@ SPARKLE_FADE          = 0x74
 FLAME                 = 0x75
 GLOW                  = 0x76
 
+BRIGHT                = 0x80
+
 RESTORE_STATE         = 0xFD
 SET_ALL               = 0xFE
 CLEAR_ALL             = 0xFF
@@ -40,6 +42,16 @@ class ledStrip():
     self.ledState[led * 3] = r
     self.ledState[led * 3 + 1] = g
     self.ledState[led * 3 + 2] = b
+
+  def setLedRange(self, ledStart, ledEnd, r, g, b, wait, blink):
+    for x in range(ledStart, ledEnd):
+      self.i2c.write_i2c_block_data(self.address, SET_SINGLE_COLOR, [x, r, g, b, wait, blink])
+      self.ledState[x * 3] = r
+      self.ledState[x * 3 + 1] = g
+      self.ledState[x * 3 + 2] = b
+
+  def setBright(self, brightness):
+    self.i2c.write_i2c_block_data(self.address, BRIGHT, [brightness, 0, 0, 0, 0, 0])
 
   def restoreState(self):
     self.i2c.write_i2c_block_data(self.address, RESTORE_STATE, EMPTY_BYTES)

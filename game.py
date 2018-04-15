@@ -56,7 +56,7 @@ class Score:
   def modscore(self, amount):
     "Modifies score with respect to the current multiplier"
     self.val += (amount * self.mul)
-    if self.val > 99999999: self.val = 99999999
+    if self.val > 99999999: self.val = 0
 
   def setmul(self, mul):
     "Sets the multiplier"
@@ -144,10 +144,11 @@ playlistPos = 0
 playlistPath = "audio/music/"
 
 # Currently using pygame for sound and music and frame-rate control
+pygame.mixer.pre_init(44100, -16, 1, 512)
 pygame.init()
 pygame.display.set_mode((1,1))
 clock = pygame.time.Clock()
-pygame.mixer.init(44100, -16,2,2048)
+#pygame.mixer.init(44100, -16,2,2048)
 
 # Curses Initialization for game status (curses import)
 screen = curses.initscr()
@@ -162,7 +163,7 @@ signal.signal(signal.SIGINT, signal_handler)
 
 #################################################################################
 # Init losercam
-camera = picamera.PiCamera()
+#camera = picamera.PiCamera()
 #################################################################################
 
 #################################################################################
@@ -194,7 +195,7 @@ smbus = smbus.SMBus(1)
 # in_dir_reg, out_reg, in_reg, pup_reg, pol_reg, debounce_time
 #################################################################################
 try:
-  io = mcp23017(smbus, 0x20, 2, 0x00, 0x01, 0x14, 0x13, 0x0D, 0x03, 400)
+  io = mcp23017(smbus, 0x20, 1, 0x00, 0x01, 0x14, 0x13, 0x0D, 0x03, 50)
 except:
   clean_exit(message="Failed loading I2C IO!\n")
 
@@ -209,10 +210,12 @@ leds = ledStrip(smbus, address=0x10)
 #################################################################################
 
 try:
-  sevSegL = SevenSegment(address=0x70, busnum=1, i2c=smbus)
-  sevSegR = SevenSegment(address=0x71, busnum=1, i2c=smbus)
+  sevSegL = SevenSegment(address=0x71, busnum=1, i2c=smbus)
+  sevSegR = SevenSegment(address=0x70, busnum=1, i2c=smbus)
   sevSegL.begin()
   sevSegR.begin()
+  sevSegL.set_invert(1)
+  sevSegR.set_invert(1)
   sevSegL.set_brightness(15)
   sevSegR.set_brightness(15)
   sevSegL.clear()
@@ -234,40 +237,51 @@ x = y = z = 0
 #################################################################################
 # Init Servo Library for 50Hz servos
 #################################################################################
-servoBoard = servo(smbus, address=0x40)
-servoBoard.setPWMFreq(50)
-ufoServo = twoAxisServo(servoBoard, 0, 1)
+#servoBoard = servo(smbus, address=0x40)
+#servoBoard.setPWMFreq(50)
+#ufoServo = twoAxisServo(servoBoard, 0, 1)
 
 
 #################################################################################
 # Animations and Scripts
 #################################################################################
-animList = ['loadBall', 'solenoid', 'ufoFly']
+animList = ['loadBall', 'solenoid'] #, 'ufoFly']
 for obj in animList:
   exec(obj + "= tEvent()")
 
-# Set up drop target with 5 targets from pin 9 to pin 13. Reset pin is 2.
-dt1 = dropTarget(9, 13, 2, pygame, solenoid, score, io, leds)
+# Set up drop target with 5 targets from pin 1 to pin 5. Reset pin is 1.
+dt1 = dropTarget(1, 5, 1, pygame, solenoid, score, io, leds)
 
 #################################################################################
 # Main Game Loop
 #################################################################################
 errors = 0
+
 while 1:
   try:
     #io.time = 
+    io_string = "["
     time = pygame.time.get_ticks()
     event = screen.getch()
 
+    for pin in range(1, 8):
+      if io.getpin(pin, time):
+        io_string += "1"
+      else:
+        io_string += "0"
+
+    io_string += "]"
+
+
     if event == ord("q"): break
 
-    if io.getpin(1, reqDebounce=False):
+    if io.getpin(6, time):
       io.pinout(1, True)
     else:
       io.pinout(1, False)
 
-    if event == ord("2") or solenoid.started == "2":
-      solenoid.triggerSolenoid(time, io, 2, duration=80, tag="2")
+    if solenoid.started == "1":
+      solenoid.triggerSolenoid(time, io, 1, duration=80, tag="1")
 
     if event == ord("3"):
       score.modscore(1)
@@ -310,20 +324,20 @@ while 1:
     if event == ord("+"):
       modVolume(10)
 
-    if event == curses.KEY_LEFT:
-      ufoServo.modX(-1)
+    #if event == curses.KEY_LEFT:
+    #  ufoServo.modX(-1)
 
-    if event == curses.KEY_RIGHT:
-      ufoServo.modX(1)
+    #if event == curses.KEY_RIGHT:
+    #  ufoServo.modX(1)
 
-    if event == curses.KEY_DOWN:
-      ufoServo.modY(-1)
+    #if event == curses.KEY_DOWN:
+    #  ufoServo.modY(-1)
       
-    if event == curses.KEY_UP:
-      ufoServo.modY(1)
+    #if event == curses.KEY_UP:
+    #  ufoServo.modY(1)
 
-    if event == ord("/") or ufoFly.started == "1":
-      ufoFly.ufoFly(time, ufoServo, duration=5000)
+    #if event == ord("/") or ufoFly.started == "1":
+    #  ufoFly.ufoFly(time, ufoServo, duration=5000)
 
     #if event == ord("j") or solenoid.started == "Motor":
     #  solenoid.triggerPWM(time, io, 9, duration=1000, tag="Motor", dutyCycle=12, dutyLength=4)
@@ -349,6 +363,15 @@ while 1:
     if event == ord("o"):
       leds.setLed(2, 127, 127, 0, 0, 0)
 
+    if event == ord("a"):
+      leds.setLedRange(5, 17, 128, 255, 128, 50, 1)
+
+    if event == ord("s"):
+      leds.setBright(16)
+
+    if event == ord("d"):
+      leds.setBright(255)
+
     if event == ord(";"):
       leds.restoreState()
 
@@ -371,10 +394,10 @@ while 1:
       leds.sparkleFade(15, 15, 255, 255, 255)
 
     if event == ord("l"):
-      leds.glow(5)
+      leds.glow(1)
 
-    if event == ord("."):
-      camera.capture('/var/www/html/snaps/' + str(gtime.time()) + '.jpg')
+    #if event == ord("."):
+    #  camera.capture('/var/www/html/snaps/' + str(gtime.time()) + '.jpg')
 
     dt1.check(time)
       
@@ -402,10 +425,11 @@ while 1:
   # Debug Information
   screen.addstr(12, 12, "Super Pinball 3000! Ticks thus far: " + str(time).ljust(20," "))
   screen.addstr(14, 12, "SCORE:       " + str(score.val).ljust(20," "))
-  screen.addstr(15, 12, "X:           " + str(ufoServo.xVal).ljust(20," "))
-  screen.addstr(16, 12, "Y:           " + str(ufoServo.yVal).ljust(20," "))
+  screen.addstr(15, 12, "IO STATUS:   " + io_string.ljust(20," "))
+  screen.addstr(16, 12, "Deb reg:     " + str(io.bouncereg[0]).ljust(20," "))
+  screen.addstr(17, 12, "Deb time:    " + str(io.debtime[0]).ljust(20," "))
   #screen.addstr(17, 12, "Temp:        " + str(ufoServo.calc).ljust(20," "))
-  screen.addstr(17, 12, "OSErrors:    " + str(errors).ljust(20," "))
+  screen.addstr(18, 12, "OSErrors:    " + str(errors).ljust(20," "))
   #screen.addstr(17, 12, "Step:        " + str(countAnim.step).ljust(20," "))
   #screen.addstr(18, 12, "Debug:       " + str(debugString).ljust(20," "))
   

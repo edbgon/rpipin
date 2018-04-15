@@ -11,6 +11,7 @@ class mcp23017:
     self.inreg   = in_reg
     self.outputs = [0b00000000] * count
     self.debtime = [0] * 8 * count
+    self.bouncereg = [0] * 8 * count
     self.start_addr = start_addr
     self.count = count
     self.debounce_time = debounce_time
@@ -44,8 +45,8 @@ class mcp23017:
       pass
     return True
   
-  def getpin(self, pin, reqDebounce=True):
-    if(pin > self.count * 8): return
+  def getpin(self, pin, time, reqDebounce=True):
+    if(pin > self.count * 8 or pin < 1): return
     (device, dpin) = self.get_dpin(pin)
     mask = 1 << dpin
     result = 0
@@ -57,14 +58,20 @@ class mcp23017:
     debounce = False
 
     if(result > 0):
-      if(self.time - self.debtime[pin - 1] >= self.debounce_time):
-        self.debtime[pin - 1] = self.time
-        debounce = True
-      if((debounce and reqDebounce) or not reqDebounce):
-        return True
+      if reqDebounce:
+        if(self.bouncereg[pin - 1] == 0):
+          self.debtime[pin - 1] = time
+          self.bouncereg[pin - 1] = 1
+
+        if(time - self.debtime[pin - 1] >= self.debounce_time):
+          return True
+        else:
+          return False
       else:
-        return False
+        return True
     else:
+      if(self.bouncereg[pin - 1] == 1):
+        self.bouncereg[pin - 1] = 0
       return False
 
   def cleanup(self):

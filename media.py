@@ -73,18 +73,18 @@ class dropTarget:
     self.resetBonus = resetBonus
 
   def reset(self, time):
-    if self.solenoid.started != "2":
-      self.solenoid.triggerSolenoid(time, self.io, self.resetPin, duration=100, tag="2")
+    if self.solenoid.started != "1":
+      self.solenoid.triggerSolenoid(time, self.io, self.resetPin, duration=100, tag="1")
 
   def check(self, time):
     totalCheck = 0
     count = 0
 
     for x in range(self.minPin, self.maxPin + 1):
-      if self.io.getpin(x, reqDebounce=False):
+      if self.io.getpin(x, time=time, reqDebounce=True):
         if self.targetTable[x] is False:
           self.score.modscore(self.targetWorth)
-          play_sound(self.pygame, "Jump_03")
+          play_sound(self.pygame, "Pickup_00")
           self.leds.setLed(self.ledTable[count], 255, 0, 0, 0, 0)
           self.leds.flash(25, 5, 255, 0, 0) # Need to make flash consider changes in LED state during flash.
           self.targetTable[x] = True
@@ -102,10 +102,10 @@ class dropTarget:
       self.needReset = False
       self.targetTable = [False]*(self.maxPin + 1)
       self.score.modscore(self.resetBonus)
+      play_sound(self.pygame, "Pickup_02")
       for x in range(len(self.ledTable)):
         self.leds.setLed(self.ledTable[x], 0, 0, 0, 0, 0)
       self.leds.flash(25, 10, 255, 255, 255)
-      play_sound(self.pygame, "Jump_03")
 
 #################################################################################
 # Timed Event Class
