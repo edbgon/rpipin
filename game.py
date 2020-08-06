@@ -148,7 +148,7 @@ pygame.mixer.pre_init(44100, -16, 1, 512)
 pygame.init()
 pygame.display.set_mode((1,1))
 clock = pygame.time.Clock()
-#pygame.mixer.init(44100, -16,2,2048)
+pygame.mixer.init(44100, -16,2,2048)
 
 # Curses Initialization for game status (curses import)
 screen = curses.initscr()
@@ -171,7 +171,7 @@ signal.signal(signal.SIGINT, signal_handler)
 # TODO: Playlist
 #################################################################################
 try:
-  playlist = ['focus.mp3', 'forged.mp3', 'multiball-loop.ogg', 'song.mp3', 'spectra.mp3']
+  playlist = ['Powerup.mp3', 'Stardrive.mp3', 'Turn_Up_Let_s_Go.mp3']
   pygame.mixer.music.set_volume(0.4)
   pygame.mixer.music.load(playlistPath + playlist[playlistPos])
   pygame.mixer.music.play(-1)
@@ -245,7 +245,7 @@ x = y = z = 0
 #################################################################################
 # Animations and Scripts
 #################################################################################
-animList = ['loadBall', 'solenoid'] #, 'ufoFly']
+animList = ['loadBall', 'solenoid', 'catapult'] #, 'ufoFly']
 for obj in animList:
   exec(obj + "= tEvent()")
 
@@ -280,8 +280,11 @@ while 1:
     else:
       io.pinout(1, False)
 
-    if solenoid.started == "1":
+    if event == ord("1") or solenoid.started == "1":
       solenoid.triggerSolenoid(time, io, 1, duration=80, tag="1")
+
+    if event == ord("2") or catapult.started == "2":
+      catapult.triggerSolenoid(time, io, 2, duration=80, tag="2")
 
     if event == ord("3"):
       score.modscore(1)
@@ -335,7 +338,7 @@ while 1:
       
     #if event == curses.KEY_UP:
     #  ufoServo.modY(1)
-
+    
     #if event == ord("/") or ufoFly.started == "1":
     #  ufoFly.ufoFly(time, ufoServo, duration=5000)
 
